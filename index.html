@@ -1,0 +1,167 @@
+<html>
+    <head>
+        <title>E.P.S.C.</title>
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js@2.8.0"></script>
+    </head>
+    <body>
+        <div class="d-flex flex-column justify-content-center align-items-center text-center p-3" style="width: 1000px">
+            <h1>Emotional Polynomial Spirit Calculator</h1>
+            <div class="d-flex flex-row align-items-center form-group w-100">
+                <label class="w-25" for="exampleInputEmail1">Group Members</label>
+                <input type="number" class="form-control" aria-describedby="emailHelp" value="6" id="groupNumberInput">
+            </div>
+            <div id="spiritsSliders">
+                <div class="d-flex flex-row align-items-center form-group w-100">
+                    <label for="formControlRange">Current Spirits</label>
+                    <input type="range" class="form-control-range" id="formControlRange" min="0" max="50" value="30">
+                    <label for="formControlRange">1st Derivative</label>
+                    <input type="range" class="form-control-range" id="formControlRange" min="-50" max="50" value="0">
+                    <label for="formControlRange">2nd Derivative</label>
+                    <input type="range" class="form-control-range" id="formControlRange" min="-50" max="50" value="0">
+                </div>
+            </div>
+            <div style="width: 800px;"><canvas id="spirits-chart"></canvas></div>
+            <p id="equation"></p>
+
+        </div>
+        <script>
+            const DEFAULT_VALUES = [30,0,0]
+            let groupMembers = 6
+            let sliderValues = null
+            let chart = null
+
+            const fillSliderValues = (count) => {
+                if(!sliderValues) {
+                    sliderValues = Array(groupMembers)
+                    for (let i = 0; i < groupMembers; i++) {
+                        sliderValues[i] = [...DEFAULT_VALUES]
+                    }
+                }
+            }
+            fillSliderValues()
+
+            const getSpititLineData = (pointCount) => {
+                let step = 0.1
+                let xs = []
+                let ys = []
+
+                let averages = [0, 0, 0]
+                for (let i = 0; i < sliderValues.length; i++) {
+                    averages[0] += sliderValues[i][0] / groupMembers / 10
+                    averages[1] += sliderValues[i][1] / groupMembers / 50
+                    averages[2] += sliderValues[i][2] / groupMembers / 500
+                }
+
+                for (let i = 0; i < pointCount; i++) {
+                    x = i * step
+                    y = (x*x * averages[2]) + (x * averages[1]) + (averages[0])
+                    xs.push(x)
+                    ys.push(y)
+                }
+                $("#equation").text(`y = (${averages[2]} * x^2) + (${averages[1]} * x) + ${averages[0]}`)
+                return [xs,ys]
+            }
+
+            const updateChart = () => {
+                let [xs, ys] = getSpititLineData(100)
+
+                const labels = xs
+                const data = {
+                    labels: labels,
+                    datasets: [{
+                        label: 'My First Dataset',
+                        data: ys,
+                        fill: false,
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1
+                    }],
+                };
+
+                if(!chart) {
+                    chart = new Chart($("#spirits-chart").get()[0],{
+                        type: 'line',
+                        data: data,
+                        options: {
+                            animation: {
+                                duration: 0
+                            },
+                            scales: {
+                                xAxes: [{
+                                    display: true,
+                                    min: 0,
+                                    max: 10
+                                }],
+                                yAxes: [{
+                                        display: true,
+                                        ticks: {
+                                            beginAtZero: true,
+                                            suggestedMin: 0,
+                                            suggestedMax: 5
+                                        }
+                                }]
+                            },
+                        }
+                    });
+                } else {
+                    chart.data = data
+                    chart.update();
+                }
+            }
+
+            const getSlidersHTML = (sliderValues, index) => {
+                return `<div class="d-flex flex-row align-items-center form-group w-100">
+                    <label for="formControlRange">Current Spirits</label>
+                    <input type="range" class="form-control-range" id="slider_${index}_0" min="0" max="50" value="${sliderValues[0]}">
+                    <label for="formControlRange">1st Derivative</label>
+                    <input type="range" class="form-control-range" id="slider_${index}_1" min="-50" max="50" value="${sliderValues[1]}">
+                    <label for="formControlRange">2nd Derivative</label>
+                    <input type="range" class="form-control-range" id="slider_${index}_2" min="-50" max="50" value="${sliderValues[2]}">
+                </div>`
+            }
+
+            const makeSliders = (newGroupMemberCount) => {
+                if (newGroupMemberCount < groupMembers) {
+                    sliderValues.pop()
+                } else if (newGroupMemberCount > groupMembers) {
+                    sliderValues.push(DEFAULT_VALUES)
+                }
+
+                // Remake HTML
+                $("#spiritsSliders").empty()
+                for (let index = 0; index < sliderValues.length; index++) {
+                    const sliderValue = sliderValues[index];
+                    $('#spiritsSliders').append(getSlidersHTML(sliderValue, index))
+
+                    $(`#slider_${index}_0`).click(() => {
+                        sliderValues[index][0] = $(`#slider_${index}_0`).val()
+                        updateChart()
+                    })
+                    $(`#slider_${index}_1`).click(() => {
+                        sliderValues[index][1] = $(`#slider_${index}_1`).val()
+                        updateChart()
+                    })
+                    $(`#slider_${index}_2`).click(() => {
+                        sliderValues[index][2] = $(`#slider_${index}_2`).val()
+                        updateChart()
+                    })
+                }
+                groupMembers = newGroupMemberCount
+                updateChart()
+            }
+
+            makeSliders(groupMembers)
+
+            $(document).ready(function () {
+                $("#groupNumberInput").on('click', (e) => {
+                    let newNumber = $("#groupNumberInput").val()
+                    makeSliders(newNumber)
+                })
+
+                updateChart()
+            });
+            
+        </script>
+    </body>
+</html>
